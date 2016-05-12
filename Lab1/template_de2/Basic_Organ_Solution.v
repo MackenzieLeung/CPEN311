@@ -205,14 +205,20 @@ wire Sample_Clk_Signal;
 // Insert your code for Lab1 here!
 //
 //
-            
-
-
-
-
-
-
-            
+always @(posedge CLK_50M)
+begin          
+if(SW[0] == 1'b1)
+	case(SW[3:1])
+		3'b000: 	LED[7:0] = 7'b00000001;
+		3'b001:	LED[7:0] = 7'b00000010;
+		3'b010:	LED[7:0] = 7'b00000100;
+		3'b011:	LED[7:0] = 7'b00001000;
+		3'b100:	LED[7:0] = 7'b00010000;
+		3'b101:	LED[7:0] = 7'b00100000;
+		3'b110:	LED[7:0] = 7'b01000000;
+		3'b111:	LED[7:0] = 7'b10000000;
+	endcase
+end            
 
 assign Sample_Clk_Signal = Clock_1KHz;
 
