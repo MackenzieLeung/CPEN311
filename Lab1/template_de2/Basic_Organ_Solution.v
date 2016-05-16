@@ -205,12 +205,31 @@ wire Sample_Clk_Signal;
 // Insert your code for Lab1 here!
 //
 //
-wire signalOut;
-tone(
-.outCLK(signalOut),
-.CLOCK_50M(CLOCK_50),
-.SW(SW[3:0]));         
+wire signalReset, signalOut;
+reg [15:0]CLKDivBits;
+     
+toneGenerator(
+	.CLOCK_50M(CLOCK_50),
+	.SW(SW[3:0]),
+	.CLKDiv(CLKDivBits),
+	.reset(signalReset));
+
+CLK_Divider(
+	.CLOCK_50M(CLOCK_50),
+	.CLKDiv(CLKDivBits),
+	.reset(signalReset),
+	.outCLK(signalOut));
+
+
+
+
 assign Sample_Clk_Signal = signalOut; 
+
+
+
+
+
+
 //assign Sample_Clk_Signal = Clock_1KHz;
 
 //Audio Generation Signal
