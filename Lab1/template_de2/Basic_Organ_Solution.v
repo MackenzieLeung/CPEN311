@@ -207,11 +207,13 @@ wire Sample_Clk_Signal;
 //
 wire signalReset, signalOut;
 reg [15:0]CLKDivBits;
+logic [31:0] scope_Info_units;
      
 toneGenerator(
 	.CLOCK_50M(CLOCK_50),
 	.SW(SW[3:0]),
 	.CLKDiv(CLKDivBits),
+	.scope_units(scope_Info_units),
 	.reset(signalReset));
 
 CLK_Divider(
@@ -220,15 +222,11 @@ CLK_Divider(
 	.reset(signalReset),
 	.outCLK(signalOut));
 
-
-
-
 assign Sample_Clk_Signal = signalOut; 
 
-
-
-
-
+//===================================
+// LCD Info Parameters
+//===================================
 
 //assign Sample_Clk_Signal = Clock_1KHz;
 
@@ -236,9 +234,6 @@ assign Sample_Clk_Signal = signalOut;
 //Note that the audio needs signed data - so convert 1 bit to 8 bits signed
 wire [7:0] audio_data = {(~Sample_Clk_Signal),{7{Sample_Clk_Signal}}}; //generate signed sample audio signal
 
-
-
-                
 //=====================================================================================
 //
 // LCD Scope Acquisition Circuitry Wire Definitions                 
@@ -324,7 +319,7 @@ LCD_Scope_Encapsulated_pacoblaze LCD_LED_scope(
                           .scope_channelB(scope_channelB), //don't touch
                           
                   //scope information generation
-                          .ScopeInfoA({character_1,character_K,character_H,character_lowercase_z}),
+                          .ScopeInfoA(scope_Info_units),
                           .ScopeInfoB({character_S,character_W,character_1,character_space}),
                           
                  //enable_scope is used to freeze the scope just before capturing 
