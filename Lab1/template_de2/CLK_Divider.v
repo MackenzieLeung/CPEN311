@@ -1,26 +1,21 @@
-module CLK_Divider(CLOCK_50M,CLKDiv,reset,outCLK);
+module CLK_Divider #(parameter BITS = 16)(CLOCK_50M,CLK_Div,out_CLK);
 	input CLOCK_50M; //50Mhz
-	input [15:0]CLKDiv;
-	input reset; 
+	input [BITS-1:0]CLK_Div;
+
 	
-	output logic outCLK;
+	output logic out_CLK;
 	
-	reg [15:0]counter;
+	reg [BITS-1:0]counter = 0;
 	
 	always @(posedge CLOCK_50M )
 	begin			
-		if (reset == 1'b0)
-			begin
-				counter <= 0;
-				outCLK <= 0; 
-			end
-		else if(counter !== CLKDiv)
+		if(counter !== (CLK_Div-1))
 			begin
 				counter <= counter + 1;
 			end
 		else	
 			begin
-				outCLK = !outCLK;
+				out_CLK = !out_CLK;
 				counter <= 0;	
 			end
 	end

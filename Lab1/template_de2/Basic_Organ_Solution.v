@@ -205,25 +205,38 @@ wire Sample_Clk_Signal;
 // Insert your code for Lab1 here!
 //
 //
-wire signalReset, signalOut;
-reg [15:0]CLKDivBits;
-     
+wire signal_Out,LED_1Hz;
+reg [15:0]CLK_Div_Bits;
+reg [31:0] scope_Info_units;
+reg [2:0] signal_SW;
+
+CLK_Divider #(.BITS(28)) CLK_Divider_Led(
+					.CLOCK_50M(CLOCK_50),
+					.CLK_Div(28'b0001_0111_1101_0111_1000_0100_0000),
+					.out_CLK(LED_1Hz));
+
+LED_Slide(
+	.LED_CLK(LED_1Hz), 
+	.LEDG(LED[7:0]));
+
+	
+
+LEDtoSW(
+		.CLOCK_50M(CLOCK_50),
+		.LED(LED[7:0]),
+		.SW(signal_SW[2:0]));
+				
 toneGenerator(
-	.CLOCK_50M(CLOCK_50),
-	.SW(SW[3:0]),
-	.CLKDiv(CLKDivBits),
-	.reset(signalReset));
+			.CLOCK_50M(CLOCK_50),
+			.SW(SW[10] ? signal_SW[2:0] : SW[3:1]),
+			.CLK_Div(CLK_Div_Bits),
+			.scope_units(scope_Info_units));
 
-CLK_Divider(
-	.CLOCK_50M(CLOCK_50),
-	.CLKDiv(CLKDivBits),
-	.reset(signalReset),
-	.outCLK(signalOut));
-
-
-
-
-assign Sample_Clk_Signal = signalOut; 
+CLK_Divider #(.BITS(16)) CLK_Divider_Tone(
+						.CLOCK_50M(CLOCK_50),
+						.CLK_Div(CLK_Div_Bits),
+						.out_CLK(signal_Out));
+assign Sample_Clk_Signal = signal_Out; 
 
 
 
@@ -234,7 +247,14 @@ assign Sample_Clk_Signal = signalOut;
 
 //Audio Generation Signal
 //Note that the audio needs signed data - so convert 1 bit to 8 bits signed
-wire [7:0] audio_data = {(~Sample_Clk_Signal),{7{Sample_Clk_Signal}}}; //generate signed sample audio signal
+wire [7:0] audio_data; //generate signed sample audio signal
+always @(posedge CLOCK_50)
+begin
+	if(SW[0] == 1'b1)
+		audio_data = {(~Sample_Clk_Signal),{7{Sample_Clk_Signal}}};
+	else
+		audio_data <= 8'h00;
+end
 
 
 
@@ -297,24 +317,24 @@ LCD_Scope_Encapsulated_pacoblaze LCD_LED_scope(
                     .clk(CLK_50M),  //don't touch
                           
                         //LCD Display values
-                      .InH(8'hAA),
-                      .InG(8'hBB),
+                      .InH(audio_data),
+                      .InG(SW[3:0]),
                       .InF(8'h01),
-                       .InE(8'h23),
+                      .InE(8'h23),
                       .InD(8'h45),
                       .InC(8'h67),
                       .InB(8'h89),
-                     .InA(8'h00),
-                          
+                      .InA(8'h00),
+                           
                      //LCD display information signals
-                         .InfoH({character_A,character_U}),
-                          .InfoG({character_S,character_W}),
-                          .InfoF({character_space,character_A}),
-                          .InfoE({character_N,character_space}),
-                          .InfoD({character_E,character_X}),
-                          .InfoC({character_A,character_M}),
-                          .InfoB({character_P,character_L}),
-                          .InfoA({character_E,character_exclaim}),
+                         .InfoH({character_I,character_N}),
+                          .InfoG({character_F,character_O}),
+                          .InfoF({character_space,character_C}),
+                          .InfoE({character_O,character_N}),
+                          .InfoD({character_S,character_O}),
+                          .InfoC({character_L,character_E}),
+                          .InfoB({character_colon,character_space}),
+                          .InfoA({character_space,character_space}),
                           
                   //choose to display the values or the oscilloscope
                           .choose_scope_or_LCD(choose_LCD_or_SCOPE),
@@ -324,7 +344,7 @@ LCD_Scope_Encapsulated_pacoblaze LCD_LED_scope(
                           .scope_channelB(scope_channelB), //don't touch
                           
                   //scope information generation
-                          .ScopeInfoA({character_1,character_K,character_H,character_lowercase_z}),
+                          .ScopeInfoA(scope_Info_units),
                           .ScopeInfoB({character_S,character_W,character_1,character_space}),
                           
                  //enable_scope is used to freeze the scope just before capturing 
