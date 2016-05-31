@@ -308,22 +308,22 @@ reg [21:0] ADD_0 ;
 //
 assign FL_WE_N 	= 1'b1;
 assign FL_RST_N 	= 1'b1;  
-assign FL_ADDR		=  addr_hi;
+assign FL_ADDR		= addr_hi;
 assign FL_OE_N		= OE;
 assign FL_CE_N		= CE;
 
 reg [3:0] state_control;
 reg [3:0] state_play;
 reg [21:0] addr_hi;
+reg [15:0] freq_div;
 
-logic Clock_22KHz;
+logic Clock_Stim;	
 
 FSM_Read(
 	.CLK(CLOCK_50), 
-	.start(SW[10]),
+	.start(Clock_Stim),
 	.waitRead(waitRead),
 	.waitOutput(waitOutput),
-	.waitComplete(waitComplete), 
 	.CE(CE), 
 	.OE(OE), 
 	.startRead_flag(startRead_flag),
@@ -340,30 +340,26 @@ wait_counter wait_Counter_Output(
 	.CLOCK_50M(CLOCK_50), 
 	.CLK_Div(3'b010), 
 	.flag(startOutput_flag),  
-	.completed(waitOutput) );
-	
-wait_counter wait_Counter_Complete(
-	.CLOCK_50M(CLOCK_50), 
-	.CLK_Div(3'b010), 
-	.flag(startComplete_flag),  
-	.completed(waitComplete) );
-	
-output_transition(.clk(startOutput_flag),.d(FL_DQ),.q(dataOutput));   
+	.completed(waitOutput) ); 
+
+freq_selector(.CLK(CLOCK_50),.fast(speed_up_event),.slow(speed_down_event),.original(speed_reset_event),.freq_divider(freq_div));
 
 // Generate clock frequencies
-freq_divider freq_div_22k(.clk(CLOCK_50),
-								  .div_clk_count(16'd568),
-								  .div_clk_out(Clock_22KHz));
+freq_divider(.clk(CLOCK_50),
+				 .div_clk_count(freq_div),
+				 .div_clk_out(Clock_Stim));
 								  
 // Audio Playback FSM
 addr_fsm ADDR_FSM(.state(state_play),
 						.addr_hi(addr_hi),
-						.clk(Clock_22KHz),
+						.clk(CLOCK_50),
+						.startB(startComplete_flag),
 						.rst(1'b0));	  
 			
 //Audio Generation Signal
 wire [7:0] audio_data = dataOutput[7:0];
 
+output_transition(.clk(startOutput_flag),.d(FL_DQ),.q(dataOutput));  
 
 //======================================================================================
 // 

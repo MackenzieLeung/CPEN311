@@ -1,12 +1,14 @@
 module addr_fsm(state,
 					 addr_hi,
 					 clk,
+					 startB,
 					 rst);
 
 output reg [3:0] state;
 output reg [21:0] addr_hi;
 input clk;
 input rst;
+input startB;
 
 parameter [3:0] INIT = 4'b0000;					 
 parameter [3:0] SET_ADDR = 4'b0001;
@@ -27,7 +29,10 @@ begin
 				end
 			SET_ADDR:
 				begin
-					state <= INC_ADDR;
+					if(startB)
+						state <= INC_ADDR;
+					else	
+						state <= SET_ADDR;
 				end
 			INC_ADDR:
 				begin
