@@ -296,57 +296,73 @@ parameter character_exclaim=8'h21;          //'!'
 
 wire Clock_1KHz, Clock_1Hz;
 wire Sample_Clk_Signal;
+wire start,waitRead,waitComplete,waitOutput;
 
+wire CE, OE, startRead_flag, startComplete_flag, startOutput_flag;
+reg [7:0]dataOutput;
+reg [21:0] ADD_0 ;
 //=======================================================================================================================
 //
 // Insert your code for Lab2 here!
 //
 //
+assign FL_WE_N 	= 1'b1;
+assign FL_RST_N 	= 1'b1;  
+assign FL_ADDR		=  addr_hi;
+assign FL_OE_N		= OE;
+assign FL_CE_N		= CE;
 
 reg [3:0] state_control;
 reg [3:0] state_play;
-reg [20:0] addr_hi;
+reg [21:0] addr_hi;
 
 logic Clock_22KHz;
-logic Clock_26KHz;
-logic Clock_18KHz;
 
-wire [7:0] audio_data;
+FSM_Read(
+	.CLK(CLOCK_50), 
+	.start(SW[10]),
+	.waitRead(waitRead),
+	.waitOutput(waitOutput),
+	.waitComplete(waitComplete), 
+	.CE(CE), 
+	.OE(OE), 
+	.startRead_flag(startRead_flag),
+	.startComplete_flag(startComplete_flag),
+	.startOutput_flag(startOutput_flag));
+
+wait_counter wait_Counter_Read(
+	.CLOCK_50M(CLOCK_50), 
+	.CLK_Div(3'b111), 
+	.flag(startRead_flag),  
+	.completed(waitRead) );	
+	
+wait_counter wait_Counter_Output(
+	.CLOCK_50M(CLOCK_50), 
+	.CLK_Div(3'b010), 
+	.flag(startOutput_flag),  
+	.completed(waitOutput) );
+	
+wait_counter wait_Counter_Complete(
+	.CLOCK_50M(CLOCK_50), 
+	.CLK_Div(3'b010), 
+	.flag(startComplete_flag),  
+	.completed(waitComplete) );
+	
+output_transition(.clk(startOutput_flag),.d(FL_DQ),.q(dataOutput));   
 
 // Generate clock frequencies
 freq_divider freq_div_22k(.clk(CLOCK_50),
-								  .div_clk_count(16'd1136),
+								  .div_clk_count(16'd568),
 								  .div_clk_out(Clock_22KHz));
 								  
-freq_divider freq_div_26k(.clk(CLOCK_50),
-								  .div_clk_count(16'd962),
-								  .div_clk_out(Clock_26KHz));
-
-freq_divider freq_div_18k(.clk(CLOCK_50),
-								  .div_clk_count(16'd1389),
-								  .div_clk_out(Clock_18KHz));
-
-// Keyboard control FSM
-control_fsm CONTROL_FSM(.state(state_control), 
-						  .key_pressed(kbd_received_ascii_code),
-						  .clk(CLK_50M), 
-						  .rst(1'b0),
-						  .spd_up_flag(speed_up_event_trigger),
-						  .spd_dwn_flag(speed_down_event_trigger));
-
 // Audio Playback FSM
 addr_fsm ADDR_FSM(.state(state_play),
 						.addr_hi(addr_hi),
 						.clk(Clock_22KHz),
-						.rst(1'b0));
-          
-
-assign Sample_Clk_Signal = Clock_1KHz;
-
+						.rst(1'b0));	  
+			
 //Audio Generation Signal
-//Note that the audio needs signed data - so convert 1 bit to 8 bits signed
-//wire [7:0] audio_data = {((~Sample_Clk_Signal)&audio_enable),{7{Sample_Clk_Signal&audio_enable}}}; //generate signed sample audio signal
-
+wire [7:0] audio_data = dataOutput[7:0];
 
 
 //======================================================================================
@@ -752,190 +768,5 @@ audio_control(
                     
             
 endmodule
-
 //============================================
-//
-// Frequency Divider Module
-// 	Divides the 50MHz clock into desired
-//		frequency
-//
-//============================================
-module freq_divider(clk, div_clk_count, div_clk_out);
-input clk;
-input reg [15:0]div_clk_count;
-output div_clk_out;
-
-reg [15:0]counter;
-wire div_clk_out;
-
-// Initialize counter to 0, clock out to 0
-initial counter = 16'd0;
-initial div_clk_out = 1'b0;
-	
-always @(posedge clk)
-begin
-
-	// Count CLOCK_50 pulses
-	// Once number of pulses reaches specified specified count,
-	// Reset the counter and flip the clock out signal
-	if(counter == div_clk_count)
-	begin
-		counter <= 16'd0;
-		div_clk_out <= ~div_clk_out;
-	end
-	
-	// Else, increment the counter every CLOCK_50 pulse
-	else
-	begin
-		counter <= counter + 1;
-	end
-end
-
-endmodule
-
-
-//============================================
-//
-// Control FSM Module
-// 	Sets the state and output of the audio 
-//		player based on keyboard and 
-//		switch presses
-//
-//============================================
-module control_fsm(state,
-						 key_pressed,
-						 clk,
-						 rst,
-						 spd_up_flag,
-						 spd_dwn_flag);
-
-output reg [3:0]state;	// The current state
-input [7:0]key_pressed;	// ASCII code of the key pressed
-input clk;	// 50 MHz clock signal
-input rst;	// Reset signal
-input spd_up_flag;
-input spd_dwn_flag;
-
-// Key Parameters
-parameter character_B =8'h42;
-parameter character_D =8'h44;
-parameter character_E =8'h45;
-parameter character_F =8'h46;
-parameter character_R =8'h52;
-
-// State Parameters
-parameter [3:0] INIT = 4'b0000;
-parameter [3:0] STOP = 4'b0001;
-parameter [3:0] PLAY = 4'b0011;
-parameter [3:0] SPD_UP = 4'b0010;
-parameter [3:0] SPD_DWN = 4'b0110;
-parameter [3:0] SPD_NORMAL = 4'b0111;
-parameter [3:0] PLAY_BACK = 4'b0101;
-parameter [3:0] RESTART = 4'b0100;
-
-always_ff @(posedge clk or posedge rst)
-begin
-
-	if(rst) state <= STOP;
-	else
-	begin
-		case(state)
-			STOP:
-				begin
-					if (key_pressed == character_E) state <= PLAY;
-					else state <= STOP;
-				end
-			PLAY:
-				begin
-					if (key_pressed == character_D) state <= STOP;
-					else if (key_pressed == character_B) state <= PLAY_BACK;
-					else if (key_pressed == character_R) state <= RESTART;
-					else if(spd_up_flag == 1'b1) state <= SPD_UP;
-					else if(spd_dwn_flag == 1'b1) state <= SPD_DWN;
-					else state <= PLAY;
-				end 
-			SPD_UP:
-				begin
-					state <= PLAY;
-				end 
-			SPD_DWN:
-				begin
-					state <= PLAY;
-				end 
-			SPD_NORMAL:
-				begin
-					state <= PLAY;
-				end 
-			PLAY_BACK:
-				begin
-					if(key_pressed == character_B) state <= PLAY_BACK;
-					else state <= PLAY;
-				end 
-			RESTART:
-				begin
-					if(key_pressed == character_R) state <= RESTART;
-					else state <= PLAY;
-				end 
-			default: state <= INIT; 
-		endcase
-	end
-end
-
-// Output Logic
-
-endmodule
-
-//============================================
-//
-// Address FSM Module
-// 	Sets the address hi and lo for the FLASH
-//		Reader FSM
-//
-//============================================
-module addr_fsm(state,
-					 addr_hi,
-					 clk,
-					 rst);
-
-output reg [3:0] state;
-output reg [20:0] addr_hi;
-input clk;
-input rst;
-
-parameter [3:0] INIT = 4'b0000;					 
-parameter [3:0] SET_ADDR = 4'b0001;
-parameter [3:0] INC_ADDR = 4'b0011;
-
-logic inc_addr_clk;
-assign inc_addr_clk = state[1];
-
-always_ff @ (posedge clk or posedge rst)
-begin
-	if(rst == 1'b1) state = INIT;
-	else
-	begin
-		case(state)
-			INIT:
-				begin
-					state <= SET_ADDR;
-				end
-			SET_ADDR:
-				begin
-					state <= INC_ADDR;
-				end
-			INC_ADDR:
-				begin
-					state <= SET_ADDR;
-				end
-			default: state = INIT;
-		endcase
-	end
-end
-
-// Output logic
-// Address increment logic
-always_ff @(posedge inc_addr_clk)
-begin
-	addr_hi <= addr_hi+2;
-end 
-endmodule					 
+				 
