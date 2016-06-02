@@ -3,7 +3,8 @@ module addr_fsm(state,
 					 clk,
 					 startB,
 					 rst,
-					 dir_flag);
+					 dir_flag,
+					 restart_flag);
 
 output reg [3:0] state;
 output reg [21:0] addr_hi;
@@ -11,7 +12,8 @@ input clk;
 input rst;
 input startB;
 input dir_flag;
-
+input restart_flag;
+	
 parameter [3:0] INIT = 4'b0000;					 
 parameter [3:0] SET_ADDR = 4'b0001;
 parameter [3:0] INC_ADDR = 4'b0011;

@@ -318,10 +318,10 @@ reg [21:0] addr_hi;
 reg [15:0] freq_div;
 
 logic Clock_Stim;	
-	
 logic Clock_22KHz;
 logic start_play_bit;
 logic dir_flag;
+logic restart_flag;
 
 assign LEDR[0] = start_play_bit;
 assign LEDR[1] = Clock_22KHz;
@@ -364,7 +364,6 @@ addr_fsm ADDR_FSM(.state(state_play),
 						.startB(startComplete_flag),
 						.rst(1'b0),
 						.dir_flag(dir_flag));	  
-
 freq_divider freq_div_22k(.clk(CLOCK_50),
 								  .div_clk_count(16'd568),
 								  .div_clk_out(Clock_22KHz));
@@ -374,11 +373,9 @@ control_fsm CONTROL_FSM(.state(state_control),
 						  .key_pressed(kbd_received_ascii_code),
 						  .clk(CLK_50M), 
 						  .rst(1'b0),
-						  .spd_up_flag(speed_up_event_trigger),
-						  .spd_dwn_flag(speed_down_event_trigger),
+						  .restart_flag(restart_flag),
 						  .dir_flag(dir_flag),
-						  .start_bit(start_play_bit));
-
+						  .start_bit(start_play_bit));  
 			
 //Audio Generation Signal
 wire [7:0] audio_data = dataOutput[7:0];
@@ -788,164 +785,5 @@ audio_control(
                     
             
 endmodule
-
 //============================================
-//
-// Frequency Divider Module
-// 	Divides the 50MHz clock into desired
-//		frequency
-//
-//============================================
-module freq_divider(clk, div_clk_count, div_clk_out);
-input clk;
-input reg [15:0]div_clk_count;
-output div_clk_out;
-
-reg [15:0]counter;
-wire div_clk_out;
-
-// Initialize counter to 0, clock out to 0
-initial counter = 16'd0;
-initial div_clk_out = 1'b0;
-	
-always @(posedge clk)
-begin
-
-	// Count CLOCK_50 pulses
-	// Once number of pulses reaches specified specified count,
-	// Reset the counter and flip the clock out signal
-	if(counter == div_clk_count)
-	begin
-		counter <= 16'd0;
-		div_clk_out <= ~div_clk_out;
-	end
-	
-	// Else, increment the counter every CLOCK_50 pulse
-	else
-	begin
-		counter <= counter + 1;
-	end
-end
-
-endmodule
-
-
-//============================================
-//
-// Control FSM Module
-// 	Sets the state and output of the audio 
-//		player based on keyboard and 
-//		switch presses
-//
-//============================================
-module control_fsm(state,
-						 key_pressed,
-						 clk,
-						 rst,
-						 spd_up_flag,
-						 spd_dwn_flag,
-						 dir_flag,
-						 start_bit);
-
-output reg [3:0]state;	// The current state
-input [7:0]key_pressed;	// ASCII code of the key pressed
-input clk;	// 50 MHz clock signal
-input rst;	// Reset signal
-input spd_up_flag;
-input spd_dwn_flag;
-output dir_flag;
-output start_bit;
-
-// Key Parameters
-parameter character_B = 8'h42;
-parameter character_D = 8'h44;
-parameter character_E = 8'h45;
-parameter character_F = 8'h46;
-parameter character_R = 8'h52;
-
-// State Parameters
-parameter [3:0] INIT = 4'b0000;
-parameter [3:0] STOP = 4'b0001;
-parameter [3:0] PLAY = 4'b0011;
-parameter [3:0] SPD_UP = 4'b0010;
-parameter [3:0] SPD_DWN = 4'b0110;
-parameter [3:0] SPD_NORMAL = 4'b0111;
-parameter [3:0] PLAY_BACK = 4'b0101;
-parameter [3:0] PLAY_FORWARD = 4'b0100;
-parameter [3:0] RESTART = 4'b1100;
-parameter [3:0] STOP_BACK = 4'b1101;
-
-always_ff @(posedge clk or posedge rst)
-begin
-
-	if(rst) state <= INIT;
-	else
-	begin
-		case(state)
-			INIT:
-				begin
-					state <= STOP;
-				end
-			STOP:
-				begin
-					if (key_pressed == character_E) state <= PLAY;
-					else state <= STOP;
-				end
-			PLAY:
-				begin
-					if (key_pressed == character_D) state <= STOP;
-					else if (key_pressed == character_B) state <= PLAY_BACK;
-					else if (key_pressed == character_R) state <= RESTART;
-					else state <= PLAY;
-				end 
-			SPD_UP:
-				begin
-					state <= PLAY;
-				end 
-			SPD_DWN:
-				begin
-					state <= PLAY;
-				end 
-			SPD_NORMAL:
-				begin
-					state <= PLAY;
-				end 
-			PLAY_BACK:
-				begin
-					if(key_pressed == character_F) state <= PLAY;
-					else if (key_pressed == character_D) state <= STOP_BACK;
-					else state <= PLAY_BACK;
-				end 
-			RESTART:
-				begin
-					if(key_pressed == character_R) state <= RESTART;
-					else state <= PLAY;
-				end 
-			STOP_BACK:
-				begin
-					if (key_pressed == character_E) state <= PLAY_BACK;
-					else state <= STOP_BACK;
-				end
-			default: state <= INIT; 
-		endcase
-	end
-end
-
-// Output Logic
-always_ff @(posedge clk)
-begin
-	if((state == PLAY) | (state == PLAY_BACK))
-		start_bit = 1'b1;
-	else
-		start_bit = 1'b0;
-end
-
-always_ff @(posedge clk)
-begin
-	if((state == PLAY_BACK) | (state == STOP_BACK))
-		dir_flag = 1'b1;
-	else
-		dir_flag = 1'b0;
-
-end
-endmodule
+				 
