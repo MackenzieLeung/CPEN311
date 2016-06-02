@@ -2,13 +2,15 @@ module addr_fsm(state,
 					 addr_hi,
 					 clk,
 					 startB,
-					 rst);
+					 rst,
+					 dir_flag);
 
 output reg [3:0] state;
 output reg [21:0] addr_hi;
 input clk;
 input rst;
 input startB;
+input dir_flag;
 
 parameter [3:0] INIT = 4'b0000;					 
 parameter [3:0] SET_ADDR = 4'b0001;
@@ -47,6 +49,9 @@ end
 // Address increment logic
 always_ff @(posedge inc_addr_clk)
 begin
-	addr_hi <= addr_hi+2;
+	if (dir_flag == 0)
+		addr_hi <= addr_hi + 2;
+	else
+		addr_hi <= addr_hi - 2;
 end 
 endmodule	

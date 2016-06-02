@@ -205,7 +205,7 @@ wire Sample_Clk_Signal;
 // Insert your code for Lab1 here!
 //
 //
-<<<<<<< HEAD
+
 wire signal_Out,LED_1Hz;
 reg [15:0]CLK_Div_Bits;
 reg [31:0] scope_Info_units;
@@ -237,27 +237,10 @@ CLK_Divider #(.BITS(16)) CLK_Divider_Tone(
 						.CLOCK_50M(CLOCK_50),
 						.CLK_Div(CLK_Div_Bits),
 						.out_CLK(signal_Out));
+						
 assign Sample_Clk_Signal = signal_Out; 
-=======
-wire signalReset, signalOut;
-reg [15:0]CLKDivBits;
-logic [31:0] scope_Info_units;
-     
-toneGenerator(
-	.CLOCK_50M(CLOCK_50),
-	.SW(SW[3:0]),
-	.CLKDiv(CLKDivBits),
-	.scope_units(scope_Info_units),
-	.reset(signalReset));
 
-CLK_Divider(
-	.CLOCK_50M(CLOCK_50),
-	.CLKDiv(CLKDivBits),
-	.reset(signalReset),
-	.outCLK(signalOut));
 
-assign Sample_Clk_Signal = signalOut; 
->>>>>>> b5647283f5241bad0a1650a275267aebb69462db
 
 //===================================
 // LCD Info Parameters
