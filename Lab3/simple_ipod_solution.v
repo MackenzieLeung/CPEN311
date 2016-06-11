@@ -203,8 +203,10 @@ output                      DRAM_WE_N;
 // Input and output declarations
 logic CLK_50M;
 logic  [7:0] LED;
+logic  [7:0] LEDRED;
 assign CLK_50M =  CLOCK_50;
 assign LEDG[7:0] = LED[7:0];
+assign LEDR[7:0] = LEDRED[7:0];
 wire audio_enable = SW[0];
 //Character definitions
 
@@ -298,23 +300,26 @@ wire Clock_1KHz, Clock_1Hz;
 wire Sample_Clk_Signal;
 wire start,waitRead,waitComplete,waitOutput;
 
-wire CE, OE, startRead_flag, startComplete_flag, startOutput_flag;
-reg [7:0]dataOutput;
-reg [21:0] ADD_0 ;
 //=======================================================================================================================
 //
 // Insert your code for Lab2 here!
 //
 //
+wire CE, OE, startRead_flag, startComplete_flag, startOutput_flag, startOutputLow_flag,flashed_flag;
+reg [7:0]dataOutputHigh;
+reg [7:0]dataOutputLow;
+reg [7:0]dataOutputVAL;
+
 assign FL_WE_N 	= 1'b1;
 assign FL_RST_N 	= 1'b1;  
-assign FL_ADDR		= addr_hi;
+assign FL_ADDR		= addr_out;
 assign FL_OE_N		= OE;
 assign FL_CE_N		= CE;
 
 reg [3:0] state_control;
 reg [3:0] state_play;
 reg [21:0] addr_hi;
+reg [21:0] addr_out;
 reg [15:0] freq_div;
 
 logic Clock_Stim;	
@@ -323,32 +328,39 @@ logic start_play_bit;
 logic dir_flag;
 logic restart_flag;
 
-assign LEDR[0] = start_play_bit;
-assign LEDR[1] = Clock_22KHz;
-assign LEDR[2] = dir_flag;
-
-FSM_Read(
-	.CLK(CLOCK_50), 
+FSM_Read(                               //take in a leading edge from the 22KHz clock and start bit
+	.CLK(CLOCK_50), 							 //reads flash accordingly 
 	.start(start_play_bit & Clock_Stim),
 	.waitRead(waitRead),
 	.waitOutput(waitOutput),
+	.waitComplete(waitComplete),
 	.CE(CE), 
 	.OE(OE), 
 	.startRead_flag(startRead_flag),
 	.startComplete_flag(startComplete_flag),
-	.startOutput_flag(startOutput_flag));
+	.startOutput_flag(startOutput_flag),
+	.startOutputLow_flag(startOutputLow_flag),
+	.addr_odd(addr_hi),
+	.addr_out(addr_out),
+	.flashed_flag(flashed_flag));
 
-wait_counter wait_Counter_Read(
+wait_counter wait_Counter_Read(				//Counter corresponding to time before reading
 	.CLOCK_50M(CLOCK_50), 
-	.CLK_Div(3'b111), 
+	.CLK_Div(4'b1000), 
 	.flag(startRead_flag),  
 	.completed(waitRead) );	
 	
-wait_counter wait_Counter_Output(
+wait_counter wait_Counter_Output(			// counter corresponding to time with correct output
 	.CLOCK_50M(CLOCK_50), 
-	.CLK_Div(3'b010), 
+	.CLK_Div(4'b0010), 
 	.flag(startOutput_flag),  
-	.completed(waitOutput) ); 
+	.completed(waitOutput) );
+
+wait_counter wait_Counter_Complete(			// counter corresponding to time with correct output
+	.CLOCK_50M(CLOCK_50), 
+	.CLK_Div(4'b0001), 
+	.flag(startComplete_flag),  
+	.completed(waitComplete) ); 	
 
 freq_selector(.CLK(CLOCK_50),.fast(speed_up_event),.slow(speed_down_event),.original(speed_reset_event),.freq_divider(freq_div));
 
@@ -361,9 +373,10 @@ freq_divider(.clk(CLOCK_50),
 addr_fsm ADDR_FSM(.state(state_play),
 						.addr_hi(addr_hi),
 						.clk(CLOCK_50),
-						.startB(startComplete_flag),
+						.startB(waitComplete),
 						.rst(1'b0),
-						.dir_flag(dir_flag));	  
+						.dir_flag(dir_flag));	
+						
 freq_divider freq_div_22k(.clk(CLOCK_50),
 								  .div_clk_count(16'd568),
 								  .div_clk_out(Clock_22KHz));
@@ -378,10 +391,11 @@ control_fsm CONTROL_FSM(.state(state_control),
 						  .start_bit(start_play_bit));  
 			
 //Audio Generation Signal
-wire [7:0] audio_data = dataOutput[7:0];
+wire [7:0] audio_data = dataOutputHigh[7:0];
 
-output_transition(.clk(startOutput_flag),.d(FL_DQ),.q(dataOutput));  
-
+output_transition lowOutput (.clk(startOutputLow_flag),.d(FL_DQ),.q(dataOutputLow));  
+output_transition highOutput(.clk(startOutput_flag),.d(FL_DQ),.q(dataOutputHigh));  
+output_transition valOutput (.clk(startOutput_flag | startOutputLow_flag),.d(FL_DQ),.q(dataOutputVAL));
 //======================================================================================
 // 
 // Keyboard Interface
@@ -783,7 +797,48 @@ audio_control(
 //
 //========================================================================================================================
                     
-            
+// PicoBlaze Circuit                        
+	assign LCD_ON   = 1'b1;
+   wire [3:0] sync_SW;
+   reg CLK_25;
+   
+   always @(posedge CLK_50M)
+   begin
+        CLK_25 <= !CLK_25;
+   end
+doublesync syncsw3(.indata(SW[3]),
+                      .outdata(sync_SW[3]),
+                          .clk(CLK_25),
+                          .reset(1'b1));                
+                          
+
+doublesync syncsw2(.indata(SW[2]),
+                      .outdata(sync_SW[2]),
+                          .clk(CLK_25),
+                          .reset(1'b1));    
+
+doublesync syncsw1(.indata(SW[1]),
+                      .outdata(sync_SW[1]),
+                          .clk(CLK_25),
+                          .reset(1'b1)); 
+
+doublesync syncsw0(.indata(SW[0]),
+                      .outdata(sync_SW[0]),
+                          .clk(CLK_25),
+                          .reset(1'b1));   	 
+picoblaze_template
+#(
+.clk_freq_in_hz(25000000)
+) 
+picoblaze_template_inst(								//PicoTemplate
+                        .led(LED[7:0]),
+								.ledr(LEDRED[7:0]),
+                        .clk(CLK_25),
+								.dataVAL(dataOutputHigh),
+								.interupt_flag(startComplete_flag),
+								.input_data({4'h0,sync_SW[3:0]})
+                 );
+					  
 endmodule
 //============================================
 				 
