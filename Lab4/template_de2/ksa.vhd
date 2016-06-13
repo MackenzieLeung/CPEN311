@@ -32,7 +32,18 @@ architecture rtl of ksa is
 	 address: OUT STD_LOGIC_VECTOR (7 DOWNTO 0);
 	 data: OUT STD_LOGIC_VECTOR (7 DOWNTO 0);
 	 q: OUT STD_LOGIC_VECTOR (7 DOWNTO 0);
-	 wren: OUT STD_LOGIC
+	 wren: OUT STD_LOGIC;
+	 array_init_flag: OUT STD_LOGIC
+	 );
+	 END COMPONENT;
+	 
+	 COMPONENT s_memory IS
+	 PORT(
+	 address	: IN STD_LOGIC_VECTOR (7 DOWNTO 0);
+	 clock : IN STD_LOGIC;
+	 data	: IN STD_LOGIC_VECTOR (7 DOWNTO 0);
+	 wren : IN STD_LOGIC ;
+	 q : OUT STD_LOGIC_VECTOR (7 DOWNTO 0)
 	 );
 	 END COMPONENT;
 	   
@@ -40,19 +51,34 @@ architecture rtl of ksa is
 	 signal clk, reset_n : std_logic;
 	 signal s_address, s_data, s_q : std_logic_vector (7 downto 0);
 	 signal s_wren : std_logic;
-
+	 signal s_array_init_flag : std_logic;
+	 
 begin
 
     clk <= CLOCK_50;
     reset_n <= KEY(3);
 	 
+	 LEDR(1) <= s_array_init_flag;
+	 LEDR(2) <= s_array_init_flag;
+	 
+	 -- Instantiate an s-memory module
+	 S_MEM: COMPONENT s_memory PORT MAP(
+	 address => s_address,
+	 clock => clk,
+	 data => s_data,
+	 wren => s_wren,
+	 q => s_q
+	 );
+	 
+	 -- Instantiate an s-memory filling FSM
 	 S_ARRAY: COMPONENT s_array_fsm PORT MAP(
 	 clk => clk,
 	 rst => reset_n,
 	 address => s_address,
 	 data => s_data,
 	 q => s_q,
-	 wren => s_wren
+	 wren => s_wren,
+	 array_init_flag => s_array_init_flag
 	 );
 
 end RTL;
