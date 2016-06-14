@@ -15,7 +15,7 @@ reg [7:0] counter;	// loop counter
 
 output reg [7:0] address;	// address to write data to
 output reg [7:0] data;	// data to write into memory
-output reg [7:0] q;	// memory output
+input reg [7:0] q;	// memory output
 output wren;	// 1 = write to memory, 0 = do not write
 
 output array_init_flag;	// 1 = array initialized, 0 = not initialized 
