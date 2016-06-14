@@ -4,7 +4,8 @@ module s_array_fsm(clk,
 						 data,
 						 q,
 						 wren,
-						 array_init_flag);
+						 array_init_flag,
+						 line_sel);
 
 input clk;	// Clock 50
 input rst;	// Reset pin
@@ -15,10 +16,12 @@ reg [7:0] counter;	// loop counter
 
 output reg [7:0] address;	// address to write data to
 output reg [7:0] data;	// data to write into memory
-output reg [7:0] q;	// memory output
+input reg [7:0] q;	// memory output
 output wren;	// 1 = write to memory, 0 = do not write
 
 output array_init_flag;	// 1 = array initialized, 0 = not initialized 
+
+output reg [1:0] line_sel;
 
 parameter [2:0] INIT = 3'b000;
 parameter [2:0] INCREMENT = 3'b001;
@@ -77,25 +80,33 @@ begin
 	begin
 		counter = 8'd0;
 		wren = 1'b0;
-		array_init_flag <= 1'b0;
+		array_init_flag = 1'b0;
+		line_sel = 2'd1;
 	end
 	else if(state == INCREMENT)
 	begin
 		counter = counter + 8'd1;
 		wren = 1'b0;
-		array_init_flag <= 1'b0;
+		array_init_flag = 1'b0;
+		line_sel = 2'd1;
 	end
 	else if(state == SET_ADDR)
 	begin
-		wren <= 1'b1;
+		wren = 1'b1;
 		array_init_flag <= 1'b0;
+		line_sel = 2'd1;
 	end
 	else if(state == ARRAY_FILLED)
-		array_init_flag <= 1'b1;
+	begin
+		array_init_flag = 1'b1;
+		wren = 1'b0;
+		line_sel = 2'd1;
+	end
 	else
 	begin
-		wren <= 1'b0;
-		array_init_flag <= 1'b0;
+		wren = 1'b0;
+		array_init_flag = 1'b0;
+		line_sel = 2'd1;
 	end
 end
 

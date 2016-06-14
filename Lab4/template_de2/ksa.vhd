@@ -46,20 +46,38 @@ architecture rtl of ksa is
 	 q : OUT STD_LOGIC_VECTOR (7 DOWNTO 0)
 	 );
 	 END COMPONENT;
-	   
+	 
+	 COMPONENT array_shuffle IS
+	 PORT(
+	 clk : IN STD_LOGIC;
+	 secret_key : IN STD_LOGIC_VECTOR(23 DOWNTO 0);
+	 address : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+	 data : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+	 q : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
+	 wren : OUT STD_LOGIC;
+	 array_init_flag : IN STD_LOGIC;
+	 swap_done_flag : OUT STD_LOGIC
+	 );
+	 END COMPONENT;
+	 	   
     -- clock and reset signals  
 	 signal clk, reset_n : std_logic;
 	 signal s_address, s_data, s_q : std_logic_vector (7 downto 0);
 	 signal s_wren : std_logic;
 	 signal s_array_init_flag : std_logic;
+	 signal secret_key : std_logic_vector (23 downto 0);
+	 signal swap_done_flag : std_logic;
+	 signal line_select : STD_LOGIC_VECTOR (1 downto 0);
 	 
 begin
 
     clk <= CLOCK_50;
     reset_n <= KEY(3);
 	 
-	 LEDR(1) <= s_array_init_flag;
-	 LEDR(2) <= s_array_init_flag;
+	 LEDR <= SW;
+	 
+	 -- Concatenate bits
+	 secret_key <= B"000000" & SW;
 	 
 	 -- Instantiate an s-memory module
 	 S_MEM: COMPONENT s_memory PORT MAP(
@@ -80,6 +98,19 @@ begin
 	 wren => s_wren,
 	 array_init_flag => s_array_init_flag
 	 );
+	 
+	 S_ARRAY_SWAP: COMPONENT array_shuffle PORT MAP(
+	 clk => clk,
+	 secret_key => secret_key,
+	 address => s_address,
+	 data => s_data,
+	 q => s_q,
+	 wren => s_wren,
+	 array_init_flag => s_array_init_flag,
+	 swap_done_flag => swap_done_flag
+	 );
+	 
+	 
 
 end RTL;
 
