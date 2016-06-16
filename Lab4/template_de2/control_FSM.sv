@@ -1,10 +1,12 @@
 module control_FSM(input clk, input start_flag,
 						output array_start_flag, 
-						input [7:0] s_array_address, input [7:0] s_array_data, input s_array_wren,  
-						input [4:0]shuffle_address, input [7:0]shuffle_data, input shuffle_wren,  
-						input [4:0]computeEncrypt_address, input [7:0]computeEncrypt_data,input computeEncrypt_wren, 
+						input [7:0] s_array_address, input [7:0] s_array_data, input s_array_wren, output [7:0] s_array_q,
+						input [7:0]shuffle_address, input [7:0]shuffle_data, input shuffle_wren, output [7:0] shuffle_q,
+						input [4:0]computeEncrypt_address, input [7:0]computeEncrypt_data,input computeEncrypt_wren,
+						output [7:0] computeEncrypt_q,
 						input array_done_flag, input swap_done_flag, input compute_done_flag,
-						output [7:0] s_address, output [7:0] s_data, output s_wren
+						output [7:0] s_address, output [7:0] s_data, output s_wren, input [7:0] s_q,
+						output test_bit
 						);
 	
 reg [2:0]state;
@@ -33,7 +35,7 @@ begin
 		SHUFFLE:
 		begin
 			if(swap_done_flag)
-				state <= COMPUTE;
+				state <= SHUFFLE;
 			else
 				state <= SHUFFLE;
 		end
@@ -56,24 +58,27 @@ begin
 	end
 	else if(state == S_ARRAY)
 	begin
-		array_start_flag <= 1'b1;
-		s_address <= s_array_address;
-		s_data 	 <= s_array_data;
-		s_wren 	 <= s_array_wren;
+		array_start_flag = 1'b1;
+		s_address = s_array_address;
+		s_data 	 = s_array_data;
+		s_wren 	 = s_array_wren;
+		s_array_q = s_q;
 	end
 	else if(state == SHUFFLE)
 	begin
-		array_start_flag <= 1'b0;
-		s_address <= shuffle_address;
-		s_data <= shuffle_data;
-		s_wren <= shuffle_wren;
+		array_start_flag = 1'b1;
+		s_address = shuffle_address;
+		s_data = shuffle_data;
+		s_wren = shuffle_wren;
+		shuffle_q = s_q;
 	end
 	else if(state == COMPUTE)
 	begin
 		array_start_flag <= 1'b0;
 		s_address <= computeEncrypt_address;
 		s_data 	 <= computeEncrypt_data;
-		s_wren 	 <= computeEncrypt_data;
+		s_wren 	 <= computeEncrypt_wren;
+		computeEncrypt_q = s_q;
 	end
 	else
 	begin

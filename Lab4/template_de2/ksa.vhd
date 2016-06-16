@@ -89,13 +89,21 @@ architecture rtl of ksa is
 	 COMPONENT array_shuffle IS
 	 PORT(
 	 clk : IN STD_LOGIC;
+	 rst : IN STD_LOGIC;
 	 secret_key : IN STD_LOGIC_VECTOR(23 DOWNTO 0);
+	 secret_byte : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
 	 address : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+	 address_i : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+	 address_j : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
 	 data : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
 	 q : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
+	 q_i : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+	 q_j : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
 	 wren : OUT STD_LOGIC;
 	 array_done_flag : IN STD_LOGIC;
-	 swap_done_flag : OUT STD_LOGIC
+	 swap_done_flag : OUT STD_LOGIC;
+	 test_bit : OUT STD_LOGIC;
+	 temp_reg : OUT STD_LOGIC_VECTOR(7 DOWNTO 0)
 	 );
 	 END COMPONENT;
 
@@ -126,19 +134,24 @@ architecture rtl of ksa is
 	array_start_flag : OUT STD_LOGIC; 
 	s_array_address : IN STD_LOGIC_VECTOR(7 DOWNTO 0); 
 	s_array_data : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
-	s_array_wren : IN STD_LOGIC;  
+	s_array_wren : IN STD_LOGIC; 
+	s_array_q : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);	
 	shuffle_address : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
 	shuffle_data : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
-	shuffle_wren : IN STD_LOGIC;  
+	shuffle_wren : IN STD_LOGIC;
+	shuffle_q : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
 	computeEncrypt_address : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
 	computeEncrypt_data : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
 	computeEncrypt_wren : IN STD_LOGIC;
+	computeEncrypt_q : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
 	array_done_flag : IN STD_LOGIC; 
 	swap_done_flag : IN STD_LOGIC;
 	compute_done_flag : IN STD_LOGIC;
 	s_address: OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
 	s_data : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
-	s_wren : OUT STD_LOGIC
+	s_wren : OUT STD_LOGIC;
+	s_q : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
+	test_bit : OUT STD_LOGIC
 	);
 	END COMPONENT;
 
@@ -173,8 +186,11 @@ architecture rtl of ksa is
 	 signal s_data_array, s_data_shuffle, s_data_encrypt : std_logic_vector (7 downto 0);
 	 signal s_q_array, s_q_shuffle, s_q_encrypt : std_logic_vector (7 downto 0);
 	 signal s_wren_array, s_wren_shuffle, s_wren_encrypt : std_logic;
-
-
+	 
+	 -- REGISTERS
+	 signal secret_byte, address_i, address_j, q_i, q_j, temp_reg : std_logic_vector (7 downto 0);
+	 signal test_bit : std_logic;
+	 
 begin
 
     clk <= CLOCK_50;
@@ -182,12 +198,13 @@ begin
 	 start_flag <= KEY(0);
 	 
 	 -- OUTPUT SECRET KEY TO LEDR
-	 LEDR <= SW;
+	 LEDR <= secret_key(17 downto 0);
 	 
 	 -- DISPLAY FLAGS ON LEDG
 	 LEDG(0) <= array_done_flag;
 	 LEDG(1) <= swap_done_flag;
 	 LEDG(2) <= compute_done_flag;
+	 LEDG(6) <= test_bit;
 	 LEDG(7) <= KEY(3);
 	 
 	 -- Concatenate bits
@@ -201,18 +218,22 @@ begin
 	 s_array_address => s_address_array,
 	 s_array_data => s_data_array,
 	 s_array_wren => s_wren_array,
+	 s_array_q => s_q_array,
 	 shuffle_address => s_address_shuffle,
 	 shuffle_data => s_data_shuffle,
 	 shuffle_wren  => s_wren_shuffle,
+	 shuffle_q => s_q_shuffle,
 	 computeEncrypt_address => s_address_encrypt, 
 	 computeEncrypt_data => s_data_encrypt,
 	 computeEncrypt_wren => s_wren_encrypt,
+	 computeEncrypt_q => s_q_encrypt,
 	 array_done_flag => array_done_flag,
 	 swap_done_flag => swap_done_flag,
 	 compute_done_flag => compute_done_flag,
 	 s_address => s_address,
 	 s_data => s_data,
-	 s_wren => s_wren
+	 s_wren => s_wren,
+	 s_q => s_q
 	);
 	 
 	 -- Instantiate an s-memory module
@@ -238,13 +259,21 @@ begin
 	 
 	 S_ARRAY_SWAP: COMPONENT array_shuffle PORT MAP(
 	 clk => clk,
+	 rst => reset_n,
 	 secret_key => secret_key,
+	 secret_byte => secret_byte,
 	 address => s_address_shuffle,
+	 address_i => address_i,
+	 address_j => address_j,
 	 data => s_data_shuffle,
 	 q => s_q_shuffle,
+	 q_i => q_i,
+	 q_j => q_j,
 	 wren => s_wren_shuffle,
 	 array_done_flag => array_done_flag,
-	 swap_done_flag => swap_done_flag
+	 swap_done_flag => swap_done_flag,
+	 test_bit => test_bit,
+	 temp_reg => temp_reg
 	 ); 
 	 
 --	 s_address <= s_address_array;

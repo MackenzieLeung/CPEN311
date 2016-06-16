@@ -77,7 +77,6 @@ end
 // Output Logic
 assign address = counter[7:0];
 assign data = counter[7:0];
-assign led_reg = counter;
 						  
 always @(posedge clk)
 begin
