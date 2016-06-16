@@ -8,6 +8,7 @@ entity ksa is
     KEY                : in  std_logic_vector(3 downto 0);  -- push button switches
     SW                 : in  std_logic_vector(17 downto 0);  -- slider switches
     LEDR : out std_logic_vector(17 downto 0);  -- red lights
+	 LEDG : out std_LOGIC_VECTOR(7 downto 0);
     HEX0 : out std_logic_vector(6 downto 0);
     HEX1 : out std_logic_vector(6 downto 0);
     HEX2 : out std_logic_vector(6 downto 0);
@@ -31,6 +32,7 @@ architecture rtl of ksa is
 	 s_array	: IN STD_LOGIC_VECTOR (7 DOWNTO 0);
 	 shuffle	: IN STD_LOGIC_VECTOR (7 DOWNTO 0);
 	 encrypt	: IN STD_LOGIC_VECTOR (7 DOWNTO 0);
+	 sel     : IN STD_LOGIC_VECTOR (1 DOWNTO 0);
 	 to_s_mem: OUT STD_LOGIC_VECTOR (7 DOWNTO 0)
 	 );
 	 END COMPONENT;
@@ -124,23 +126,28 @@ architecture rtl of ksa is
 	 signal secret_key : std_logic_vector (23 downto 0);
 	 signal swap_done_flag : std_logic;
 	 signal line_select : STD_LOGIC_VECTOR (1 downto 0);
-	 
+	 signal ledr_reg : STD_LOGIC_VECTOR (8 downto 0);
 
 	 signal d_address: std_logic_vector (4 downto 0);
 	 signal d_data, d_q : std_logic_vector (7 downto 0);
 	 signal d_wren: std_logic;
 	 signal e_address : std_logic_vector (4 downto 0);
 	 signal e_q : std_logic_vector (7 downto 0);
-	 signal s_address_s_array, s_address_shuffle, s_address_encrypt : std_logic_vector (7 downto 0);
-	 signal s_data_s_array, s_data_shuffle, s_data_encrypt : std_logic_vector (7 downto 0);
-	 signal s_array_wren, shuffle_wren, encrypt_wren : std_logic;
+	 signal s_address_array, s_address_shuffle, s_address_encrypt : std_logic_vector (7 downto 0);
+	 signal s_data_array, s_data_shuffle, s_data_encrypt : std_logic_vector (7 downto 0);
+	 signal s_q_array, s_q_shuffle, s_q_encrypt : std_logic_vector (7 downto 0);
+	 signal s_wren_array, s_wren_shuffle, s_wren_encrypt : std_logic;
+
 
 begin
 
     clk <= CLOCK_50;
     reset_n <= KEY(3);
 	 
-	 LEDR <= SW;
+	 -- LEDR <= SW;
+	 LEDR(8 downto 0) <= ledr_reg;
+	 LEDG(0) <= s_array_init_flag;
+	 LEDG(7) <= KEY(3);
 	 
 	 -- Concatenate bits
 	 secret_key <= B"000000" & SW;
@@ -154,82 +161,27 @@ begin
 	 q => s_q
 	 );
 
-	-- Instantiate an d-memory module
-	 D_MEM: COMPONENT d_memory PORT MAP(
-	 address => d_address,
-	 clock => clk,
-	 data => d_data,
-	 wren => d_wren,
-	 q => d_q
-	 );
-	 
-	 -- Instantiate an e-memory module
-	 E_MEM: COMPONENT e_memory PORT MAP(
-	 address => e_address,
-	 clock => clk,
-	 q => e_q
-	 );
-	 
 	 -- Instantiate an s-memory filling FSM
 	 S_ARRAY: COMPONENT s_array_fsm PORT MAP(
 	 clk => clk,
 	 rst => reset_n,
-	 address => s_address_s_array,
-	 data => s_data_s_array,
-	 q => s_q,
-	 wren => s_array_wren,
+	 address => s_address_array,
+	 data => s_data_array,
+	 q => s_q_array,
+	 wren => s_wren_array,
 	 array_init_flag => s_array_init_flag
 	 );
 	 
 	 S_ARRAY_SWAP: COMPONENT array_shuffle PORT MAP(
 	 clk => clk,
 	 secret_key => secret_key,
-	 address => s_address,
-	 data => s_data,
-	 q => s_q,
-	 wren => s_wren,
+	 address => s_address_shuffle,
+	 data => s_data_shuffle,
+	 q => s_q_shuffle,
+	 wren => s_wren_shuffle,
 	 array_init_flag => s_array_init_flag,
 	 swap_done_flag => swap_done_flag
-	 );
-	 
-	 
-	 ADDRESS_MUX: COMPONENT mux_3to1 PORT MAP(
-	 clk		=> clk,
-	 s_array	=> s_address_s_array,
-	 shuffle	=> s_address_shuffle,
-	 encrypt	=> s_address_encrypt,
-	 to_s_mem=> s_address
-	 );
-	 
-	 DATA_MUX: COMPONENT mux_3to1 PORT MAP(
-	 clk		=> clk,
-	 s_array	=> s_data_s_array,
-	 shuffle	=> s_data_shuffle,
-	 encrypt	=> s_data_encrypt,
-	 to_s_mem=> s_data
-	 );
-	 
-	 wrenS_OR: COMPONENT wrenOR PORT MAP(
-	 clk		=> clk,
-	 s_array	=> s_array_wren,
-	 shuffle	=> shuffle_wren,
-	 encrypt	=> encrypt_wren,
-	 wren		=> s_wren
-	 );
-	 
-	 COMP_EN: COMPONENT computeEncrypt PORT MAP(
-	 clk					=> clk,
-	 reset				=> s_array_init_flag,
-	 s_q					=> s_q,
-	 encrypt_K_q		=> e_q,
-	 dencrypt_K_data	=> d_data,
-	 kE_add				=> e_address,
-	 kD_add				=> d_address,
-	 s_data				=> s_data_encrypt,
-	 s_add				=> s_address_encrypt,
-	 wrenS				=> encrypt_wren,
-	 wrenD				=> d_wren
-	 );
+	 ); 
 	 
 end RTL;
 

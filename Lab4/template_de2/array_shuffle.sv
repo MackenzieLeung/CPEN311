@@ -5,8 +5,7 @@ module array_shuffle(clk,
 							q,
 							wren,
 							array_init_flag,
-							swap_done_flag,
-							line_sel
+							swap_done_flag
 							);
 
 input clk;	// Clock 50
@@ -34,8 +33,6 @@ reg [7:0] temp_reg;	// temporary data register for swapping
 input array_init_flag;	// 1 = array initialization complete
 output swap_done_flag;	// 1 = swap_done_flag, 0 = not finished
 
-output reg [1:0] line_sel;
-
 parameter KEYLENGTH = 4'd3;	// key length is 3
 
 // State Encodings
@@ -61,7 +58,10 @@ begin
 		case(state)
 			INIT:
 			begin
-				state <= CALC_J;
+				if(array_init_flag)
+					state = CALC_J;
+				else
+					state = INIT;
 			end
 			
 			CALC_J:
@@ -140,7 +140,6 @@ begin
 			address_i = 8'd0;
 			wren = 1'b0;
 			swap_done_flag = 1'b0;
-			line_sel = 2'd2;
 		end
 		
 	else if(state == CALC_J)
@@ -148,7 +147,6 @@ begin
 			address_j = address_j + q_i + secret_key[address_i % KEYLENGTH];
 			wren = 1'b0;
 			swap_done_flag = 1'b0;
-			line_sel = 2'd2;
 		end
 
 	else if(state == SET_I_ADDR)
@@ -156,7 +154,6 @@ begin
 			address = address_i;
 			wren = 1'b0;
 			swap_done_flag = 1'b0;
-			line_sel = 2'd2;
 		end
 	else if(state == STORE_I_TO_TEMP)
 		begin
@@ -164,21 +161,18 @@ begin
 			q_i = q;
 			wren = 1'b0;
 			swap_done_flag = 1'b0;
-			line_sel = 2'd2;
 		end
 	else if(state == SET_J_ADDR)
 		begin
 			address = address_j;
 			wren = 1'b0;
 			swap_done_flag = 1'b0;
-			line_sel = 2'd2;
 		end
 	else if(state == READ_J_DATA)
 		begin
 			q_j = q;
 			wren = 1'b0;
 			swap_done_flag = 1'b0;
-			line_sel = 2'd2;
 		end
 	else if(state == WRITE_J_TO_I)
 		begin
@@ -186,52 +180,44 @@ begin
 			data = q_j;
 			wren = 1'b1;
 			swap_done_flag = 1'b0;
-			line_sel = 2'd2;
 		end
 	else if(state == SET_I_TO_TEMP )
 		begin
 			data = temp_reg;
 			wren = 1'b0;
 			swap_done_flag = 1'b0;
-			line_sel = 2'd2;
 		end
 	else if(state == SET_J_ADDR_2)
 		begin
 			address = address_j;
 			wren = 1'b0;
 			swap_done_flag = 1'b0;
-			line_sel = 2'd2;
 		end
 	else if(state == WRITE_I_TO_J)
 		begin
 			wren = 1'b1;
 			swap_done_flag = 1'b0;
-			line_sel = 2'd2;
 		end
 	else if(state == INCR_I)
 		begin
 			address_i = address_i + 8'd1;
 			wren = 1'b0;
 			swap_done_flag = 1'b0;
-			line_sel = 2'd2;
 		end
 	else if(state == CMP_I)
 		begin
 			wren = 1'b0;
 			swap_done_flag = 1'b0;
-			line_sel = 2'd2;
 		end
 	else if(state == END_SWAP)
 		begin
 			wren = 1'b0;
 			swap_done_flag = 1'b1;
-			line_sel = 2'd2;
 		end
 	else
 		begin
 			wren = 1'b0;
 			swap_done_flag = 1'b0;
-			line_sel = 2'd2;
 		end
 end
 
