@@ -4,7 +4,7 @@ module array_shuffle(clk,
 							data,
 							q,
 							wren,
-							array_init_flag,
+							array_done_flag,
 							swap_done_flag
 							);
 
@@ -30,7 +30,7 @@ output wren;	// 1 = write to memory, 0 = do not write
 
 reg [7:0] temp_reg;	// temporary data register for swapping
 
-input array_init_flag;	// 1 = array initialization complete
+input array_done_flag;	// 1 = array initialization complete
 output swap_done_flag;	// 1 = swap_done_flag, 0 = not finished
 
 parameter KEYLENGTH = 4'd3;	// key length is 3
@@ -50,15 +50,15 @@ parameter [3:0] INCR_I = 4'b1111;	// increment the i address
 parameter [3:0] CMP_I = 4'b1110;	// compare if greater than 256
 parameter [3:0] END_SWAP = 4'b1010;	// done swapping
 
-always_ff @(posedge clk or posedge array_init_flag)
+always_ff @(posedge clk or posedge array_done_flag)
 begin
-	if(array_init_flag) state <= INIT;
+	if(array_done_flag) state <= INIT;
 	else
 	begin
 		case(state)
 			INIT:
 			begin
-				if(array_init_flag)
+				if(array_done_flag)
 					state = CALC_J;
 				else
 					state = INIT;

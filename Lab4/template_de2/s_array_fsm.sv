@@ -4,7 +4,8 @@ module s_array_fsm(clk,
 						 data,
 						 q,
 						 wren,
-						 array_init_flag
+						 start_flag,
+						 array_done_flag
 						 );
 
 input clk;	// Clock 50
@@ -19,7 +20,8 @@ output reg [7:0] data;	// data to write into memory
 input reg [7:0] q;	// memory output
 output wren;	// 1 = write to memory, 0 = do not write
 
-output logic array_init_flag;	// 1 = array initialized, 0 = not initialized 
+input logic start_flag;
+output logic array_done_flag;	// 1 = array initialized, 0 = not initialized 
 
 // State Encodings
 parameter [2:0] INIT = 3'b000;
@@ -39,7 +41,10 @@ begin
 		case(state)
 			INIT:
 			begin
-				state <= INCREMENT;
+				if(start_flag)
+					state <= INCREMENT;
+				else
+					state <= INIT;
 			end
 			INCREMENT:
 			begin
@@ -80,38 +85,38 @@ begin
 	begin
 		counter = 9'd0;
 		wren = '0;
-		array_init_flag = '0;
+		array_done_flag = '0;
 	end
 	else if(state == INCREMENT)
 	begin
 		counter = counter + 9'd1;
 		wren = '0;
-		array_init_flag = '0;
+		array_done_flag = '0;
 	end
 	else if(state == COMPARE)
 	begin
 		wren = '0;
-		array_init_flag = '0;
+		array_done_flag = '0;
 	end
 	else if(state == SET_ADDR)
 	begin
 		wren = '1;
-		array_init_flag <= '0;
+		array_done_flag <= '0;
 	end
 	else if(state == WRITE_DATA)
 	begin
 		wren = '0;
-		array_init_flag = '0;
+		array_done_flag = '0;
 	end
 	else if(state == ARRAY_FILLED)
 	begin
-		array_init_flag = '1;
+		array_done_flag = '1;
 		wren = '0;
 	end
 	else
 	begin
 		wren = '0;
-		array_init_flag = '0;
+		array_done_flag = '0;
 	end
 end
 

@@ -55,7 +55,8 @@ architecture rtl of ksa is
 	 data		: OUT STD_LOGIC_VECTOR (7 DOWNTO 0);
 	 q			: IN STD_LOGIC_VECTOR (7 DOWNTO 0);
 	 wren		: OUT STD_LOGIC;
-	 array_init_flag: OUT STD_LOGIC
+	 start_flag : IN STD_LOGIC;
+	 array_done_flag: OUT STD_LOGIC
 	 );
 	 END COMPONENT;
 	 
@@ -93,7 +94,7 @@ architecture rtl of ksa is
 	 data : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
 	 q : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
 	 wren : OUT STD_LOGIC;
-	 array_init_flag : IN STD_LOGIC;
+	 array_done_flag : IN STD_LOGIC;
 	 swap_done_flag : OUT STD_LOGIC
 	 );
 	 END COMPONENT;
@@ -117,22 +118,57 @@ architecture rtl of ksa is
 	q			: OUT STD_LOGIC_VECTOR (7 DOWNTO 0)
 	);	
 	END COMPONENT;
+	
+	COMPONENT control_FSM IS
+	PORT(
+	clk : IN STD_LOGIC;
+	start_flag : IN STD_LOGIC;
+	array_start_flag : OUT STD_LOGIC; 
+	s_array_address : IN STD_LOGIC_VECTOR(7 DOWNTO 0); 
+	s_array_data : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
+	s_array_wren : IN STD_LOGIC;  
+	shuffle_address : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
+	shuffle_data : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
+	shuffle_wren : IN STD_LOGIC;  
+	computeEncrypt_address : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
+	computeEncrypt_data : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
+	computeEncrypt_wren : IN STD_LOGIC;
+	array_done_flag : IN STD_LOGIC; 
+	swap_done_flag : IN STD_LOGIC;
+	compute_done_flag : IN STD_LOGIC;
+	s_address: OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+	s_data : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+	s_wren : OUT STD_LOGIC
+	);
+	END COMPONENT;
 
     -- clock and reset signals  
 	 signal clk, reset_n : std_logic;
+	 signal secret_key : std_logic_vector (23 downto 0);
+	 
+	 -- FSM START FLAGS
+	 signal start_flag : std_logic;
+	 signal array_start_flag : std_logic;
+	 
+	 -- FSM FINISH FLAGS
+	 signal array_done_flag : std_logic;
+	 signal swap_done_flag : std_logic;
+	 signal compute_done_flag : std_logic;
+	 	 
+	 -- S-MEMORY SIGNALS
 	 signal s_address, s_data, s_q : std_logic_vector (7 downto 0);
 	 signal s_wren : std_logic;
-	 signal s_array_init_flag : std_logic;
-	 signal secret_key : std_logic_vector (23 downto 0);
-	 signal swap_done_flag : std_logic;
-	 signal line_select : STD_LOGIC_VECTOR (1 downto 0);
-	 signal ledr_reg : STD_LOGIC_VECTOR (8 downto 0);
 
+	 -- D-MEMORY SIGNALS
 	 signal d_address: std_logic_vector (4 downto 0);
 	 signal d_data, d_q : std_logic_vector (7 downto 0);
 	 signal d_wren: std_logic;
+	 
+	 -- E-MEMORY SIGNALS
 	 signal e_address : std_logic_vector (4 downto 0);
 	 signal e_q : std_logic_vector (7 downto 0);
+	 
+	 -- S-MEMORY REGISTERS
 	 signal s_address_array, s_address_shuffle, s_address_encrypt : std_logic_vector (7 downto 0);
 	 signal s_data_array, s_data_shuffle, s_data_encrypt : std_logic_vector (7 downto 0);
 	 signal s_q_array, s_q_shuffle, s_q_encrypt : std_logic_vector (7 downto 0);
@@ -143,14 +179,41 @@ begin
 
     clk <= CLOCK_50;
     reset_n <= KEY(3);
+	 start_flag <= KEY(0);
 	 
-	 -- LEDR <= SW;
-	 LEDR(8 downto 0) <= ledr_reg;
-	 LEDG(0) <= s_array_init_flag;
+	 -- OUTPUT SECRET KEY TO LEDR
+	 LEDR <= SW;
+	 
+	 -- DISPLAY FLAGS ON LEDG
+	 LEDG(0) <= array_done_flag;
+	 LEDG(1) <= swap_done_flag;
+	 LEDG(2) <= compute_done_flag;
 	 LEDG(7) <= KEY(3);
 	 
 	 -- Concatenate bits
 	 secret_key <= B"000000" & SW;
+	 
+	 -- Instantiate the control FSM
+	 CON_FSM: component control_FSM	port map(
+	 clk => clk,
+	 start_flag => '1',
+	 array_start_flag => array_start_flag,
+	 s_array_address => s_address_array,
+	 s_array_data => s_data_array,
+	 s_array_wren => s_wren_array,
+	 shuffle_address => s_address_shuffle,
+	 shuffle_data => s_data_shuffle,
+	 shuffle_wren  => s_wren_shuffle,
+	 computeEncrypt_address => s_address_encrypt, 
+	 computeEncrypt_data => s_data_encrypt,
+	 computeEncrypt_wren => s_wren_encrypt,
+	 array_done_flag => array_done_flag,
+	 swap_done_flag => swap_done_flag,
+	 compute_done_flag => compute_done_flag,
+	 s_address => s_address,
+	 s_data => s_data,
+	 s_wren => s_wren
+	);
 	 
 	 -- Instantiate an s-memory module
 	 S_MEM: COMPONENT s_memory PORT MAP(
@@ -169,7 +232,8 @@ begin
 	 data => s_data_array,
 	 q => s_q_array,
 	 wren => s_wren_array,
-	 array_init_flag => s_array_init_flag
+	 start_flag => array_start_flag,
+	 array_done_flag => array_done_flag
 	 );
 	 
 	 S_ARRAY_SWAP: COMPONENT array_shuffle PORT MAP(
@@ -179,9 +243,13 @@ begin
 	 data => s_data_shuffle,
 	 q => s_q_shuffle,
 	 wren => s_wren_shuffle,
-	 array_init_flag => s_array_init_flag,
+	 array_done_flag => array_done_flag,
 	 swap_done_flag => swap_done_flag
 	 ); 
+	 
+--	 s_address <= s_address_array;
+--	 s_data <= s_data_array;
+--	 s_wren <= s_wren_array;
 	 
 end RTL;
 
